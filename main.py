@@ -5,6 +5,8 @@ import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 import sqlalchemy
 from sqlalchemy import create_engine
+import uuid
+from uuid import UUID
 
 
 app = FastAPI()
@@ -22,10 +24,17 @@ db_url = f"mysql+mysqlconnector://{db_user}:{db_pass}@{db_host}/{db_name}"
 # Crea el motor de la base de datos
 engine = create_engine(db_url)
 
+def parse_uuid(s):
+    try:
+        return UUID(s)
+    except ValueError:
+        return None  # En caso de que no se pueda convertir, se puede manejar de acuerdo a tus necesidades
+
+
 def fetch_orders_from_db():
     query = "SELECT * FROM orders"  
     with engine.connect() as connection:
-        df = pd.read_sql(query, connection, dtype={
+        df = pd.read_sql(query, connection, parse_dates=['created_at', 'updated_at'], dtype={
             'id': str,
             'client_id': str,
             'farmer_id': str,
@@ -34,10 +43,12 @@ def fetch_orders_from_db():
             'unit_of_measurement_id': str,
             'total': float,  
             'status': str,
-            'active': int,  
-            'created_at': str,
-            'updated_at': str
+            'active': int
         })
+
+    # Extraer solo la fecha de las columnas de fecha y hora
+    df['created_at'] = df['created_at'].apply(lambda x: datetime.date(x))
+    df['updated_at'] = df['updated_at'].apply(lambda x: datetime.date(x))
 
     return df
 
@@ -85,14 +96,14 @@ def generate_sample_data():
             farmer = np.random.choice(list(farmers_and_products.keys()))
             product = np.random.choice(farmers_and_products[farmer])
 
-            data['id'].append(len(data['id']) + 1)
+            data['id'].append(str(uuid.uuid4()))
             data['client_id'].append(np.random.choice(client_ids))
             data['farmer_id'].append(farmer)
             data['product_id'].append(product)
             data['quantity'].append(np.random.randint(1, 10))
             data['unit_of_measurement_id'].append("9a91e357-d777-4a26-86f5-6c33fdd7ee8f")
             data['total'].append(np.random.randint(50, 500))
-            data['status'].append('Completado')
+            data['status'].append(np.random.choice(["Completado","Pendiente","Rechazado","Cancelado"]))
             data['active'].append(False)
             data['created_at'].append(date)
             data['updated_at'].append(date)
@@ -112,6 +123,7 @@ def generate_sample_data():
 def predictOrdenes(dias_a_predecir: str):
     #Obtener dataset
     orders = fetch_orders_from_db()
+    
     # Contar la cantidad de órdenes por día
     orders_per_day = orders['created_at'].value_counts().sort_index()
 
@@ -135,13 +147,12 @@ def predictOrdenes(dias_a_predecir: str):
             'saturday': 'sábado',
             'sunday': 'domingo'
         }
-        proximos_7_dias = [(fecha_actual + timedelta(days=i)).strftime("%A").lower() for i in range(7)]
+        proximos_7_dias = [(fecha_actual + timedelta(days=i)).strftime("%A").lower() for i in range(5)]
 
         resultados = {}
 
-        # Obtener las predicciones para los próximos 7 días
-        for i, dia in enumerate(proximos_7_dias):
-            prediccion = model_fit.forecast(steps=7)[i]  # Realizar la predicción para cada día
+        for dia in proximos_7_dias:
+            prediccion = model_fit.forecast(steps=5)[0]  # Realizar la predicción para cada día
             dia_traducido = dias_semana[dia]  # Traducir el nombre del día
             resultados[dia_traducido] = prediccion
 
