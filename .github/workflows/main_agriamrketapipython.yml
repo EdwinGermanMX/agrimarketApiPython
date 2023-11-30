@@ -31,12 +31,16 @@ jobs:
         run: pip install -r requirements.txt
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+
+      - name: Zip artifact for deployment
+        run: zip release.zip ./* -r
+
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v3
         with:
           name: python-app
           path: |
-            .
+            release.zip
             !venv/
 
   deploy:
@@ -51,7 +55,10 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: python-app
-          path: .
+
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+
       
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v2
@@ -59,4 +66,4 @@ jobs:
         with:
           app-name: 'agriamrketApiPython'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_FA0AA8361143485CBA892F6E2B8A805B }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_473739C4E54F4CC49DBB48A429F635F7 }}
