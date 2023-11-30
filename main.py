@@ -7,10 +7,17 @@ import sqlalchemy
 from sqlalchemy import create_engine
 import uuid
 from uuid import UUID
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
 
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*']
+)
 
 # Configura la conexión a tu base de datos MySQL
 db_user = "EdwinGerman"
