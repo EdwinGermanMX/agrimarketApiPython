@@ -147,12 +147,13 @@ def predictOrdenes(dias_a_predecir: str):
             'saturday': 'sábado',
             'sunday': 'domingo'
         }
-        proximos_7_dias = [(fecha_actual + timedelta(days=i)).strftime("%A").lower() for i in range(5)]
+        proximos_7_dias = [(fecha_actual + timedelta(days=i)).strftime("%A").lower() for i in range(7)]
 
         resultados = {}
 
-        for dia in proximos_7_dias:
-            prediccion = model_fit.forecast(steps=5)[0]  # Realizar la predicción para cada día
+        # Obtener las predicciones para los próximos 7 días
+        for i, dia in enumerate(proximos_7_dias):
+            prediccion = model_fit.forecast(steps=7)[i]  # Realizar la predicción para cada día
             dia_traducido = dias_semana[dia]  # Traducir el nombre del día
             resultados[dia_traducido] = prediccion
 
